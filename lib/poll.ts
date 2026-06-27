@@ -6,7 +6,7 @@ const HEADERS = (token: string) => ({
   "app-version": "10.14.0",
   bundleid: "com.clubconnect.libertygymstgilles",
   platform: "ios-react",
-  locale: "en-GB",
+  locale: "fr-FR",
   Accept: "application/json",
   "Content-Type": "application/json",
   "User-Agent": "ClubConnect/710180 CFNetwork/3860.600.12 Darwin/25.5.0",
@@ -35,19 +35,24 @@ export async function pollAll(token: string, { concurrency = 8 } = {}) {
       const club = queue.shift()!;
       await sleep(Math.random() * 300);
       try {
+        console.log(`trying to poll ${club.name} (${club.id})...`);
         const res = await fetch(`https://mobile.clubconnect.fr/api/mobile/attendance/${club.id}`, { headers: HEADERS(token) });
         if (res.status === 401) {
           unauthorized = true;
           queue.length = 0;
           return;
         }
-        if (res.status !== 200) continue; // 204 = no live counter for this club right now
+        if (res.status !== 200) {
+          console.error(`poll failed : ${res.status}`);
+          continue;
+        }
         const body = await res.text();
         if (!body) continue;
         const { current, max } = JSON.parse(body) as { current: number; max: number | null };
         if (typeof current === "number") rows.push({ clubId: club.id, current, max: max ?? null });
-        console.log(`polled ${club.name} (${club.id}): ${current}${max ? `/${max}` : ""}`);
-      } catch {
+        console.log(`poll successful : ${current}${max ? `/${max}` : ""}`);
+      } catch (err) {
+        console.error(`poll failed : ${err}`);
         /* skip this club this round */
       }
     }
