@@ -1,0 +1,5 @@
+[build]
+  command = "bun run build"
+  publish = ".next"
+
+# Schedule declared in netlify/functions/poll.ts via config export
