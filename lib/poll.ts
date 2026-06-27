@@ -43,16 +43,16 @@ export async function pollAll(token: string, { concurrency = 8 } = {}) {
           return;
         }
         if (res.status !== 200) {
-          console.error(`poll failed : ${res.status}`);
+          console.error(`poll failed for ${club.name} (${club.id}): ${res.status}`);
           continue;
         }
         const body = await res.text();
         if (!body) continue;
         const { current, max } = JSON.parse(body) as { current: number; max: number | null };
         if (typeof current === "number") rows.push({ clubId: club.id, current, max: max ?? null });
-        console.log(`poll successful : ${current}${max ? `/${max}` : ""}`);
+        console.log(`poll successful for ${club.name} (${club.id}): ${current}${max ? `/${max}` : ""}`);
       } catch (err) {
-        console.error(`poll failed : ${err}`);
+        console.error(`poll failed for ${club.name} (${club.id}): ${err}`);
         /* skip this club this round */
       }
     }
