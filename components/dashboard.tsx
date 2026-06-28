@@ -27,21 +27,31 @@ export function Dashboard({ club: initialClub, initial }: { club: Club; initial:
   return (
     <main className="flex h-dvh flex-col gap-4 overflow-hidden p-4 sm:p-6">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center">
-        <span className="label">Occupation</span>
-        <div className="justify-self-center">
-          <GymSwitcher current={club} onSelect={switchClub} />
-        </div>
+        <GymSwitcher
+          current={club}
+          onSelect={switchClub}
+        />
       </header>
 
-      <Hero latest={data.latest} baseline={data.baseline} loading={loading} />
+      <Hero
+        latest={data.latest}
+        baseline={data.baseline}
+        loading={loading}
+      />
 
       <section className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between px-1 pb-2">
           <h2 className="label">Attendance</h2>
-          <Timeframe hours={hours} onChange={setHours} />
+          <Timeframe
+            hours={hours}
+            onChange={setHours}
+          />
         </div>
         <div className="min-h-0 flex-1">
-          <TrendChart data={data.recent} loading={loading} />
+          <TrendChart
+            data={data.recent}
+            loading={loading}
+          />
         </div>
       </section>
     </main>
