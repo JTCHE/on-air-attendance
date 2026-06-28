@@ -4,7 +4,7 @@ import type { Reading } from "@/lib/db";
 
 // Hand-rolled SVG so there's no chart-lib resize loop. Measured once per
 // container resize (guarded), then pure math — fast and deterministic.
-export function TrendChart({ data }: { data: Reading[] }) {
+export function TrendChart({ data, loading }: { data: Reading[]; loading?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [{ w, h }, setSize] = useState({ w: 0, h: 0 });
   const [hover, setHover] = useState<number | null>(null);
@@ -23,7 +23,7 @@ export function TrendChart({ data }: { data: Reading[] }) {
   return (
     <div
       ref={ref}
-      className="relative h-full w-full"
+      className={`relative h-full w-full transition-opacity ${loading ? "opacity-40" : ""}`}
     >
       {data.length < 2 ? (
         <div className="grid h-full place-items-center text-sm text-muted-foreground">Not enough data yet</div>
@@ -72,13 +72,19 @@ function Plot({
   );
   const xTicks = Array.from({ length: 5 }, (_, i) => x0 + ((x1 - x0) * i) / 4);
 
+  // Multi-day windows (7d/30d) read better as dates; tight windows as weekday+time.
+  const spanDays = (x1 - x0) / 86_400_000;
+  const fmt = (ts: number) =>
+    spanDays > 3
+      ? new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+      : new Date(ts).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+
   const hd = hover != null ? data[hover] : null;
   const hx = hd ? sx(hd.ts) : 0;
 
-  function onMove(e: React.MouseEvent<SVGSVGElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const t = x0 + ((mx - padL) / (w - padL - padR)) * (x1 - x0);
+  // Nearest point to a client X (binary search over ts). Shared by mouse + touch.
+  function locate(clientX: number, rect: DOMRect) {
+    const t = x0 + ((clientX - rect.left - padL) / (w - padL - padR)) * (x1 - x0);
     let lo = 0,
       hi = data.length - 1;
     while (lo < hi) {
@@ -87,6 +93,9 @@ function Plot({
     }
     setHover(lo);
   }
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => locate(e.clientX, e.currentTarget.getBoundingClientRect());
+  const onTouch = (e: React.TouchEvent<SVGSVGElement>) =>
+    locate(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
 
   return (
     <>
@@ -95,6 +104,9 @@ function Plot({
         height={h}
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
+        onTouchStart={onTouch}
+        onTouchMove={onTouch}
+        style={{ touchAction: "none" }}
         className="overflow-visible"
       >
         <defs>
@@ -145,7 +157,7 @@ function Plot({
             textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"}
             className="fill-muted-foreground text-[10px]"
           >
-            {new Date(ts).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+            {fmt(ts)}
           </text>
         ))}
         <path
@@ -187,9 +199,7 @@ function Plot({
           style={{ left: Math.min(Math.max(hx, 48), w - 48), top: 2 }}
         >
           <span className="font-semibold tabular-nums">{hd.current}</span>
-          <span className="ml-1 text-muted-foreground">
-            {new Date(hd.ts).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
-          </span>
+          <span className="ml-1 text-muted-foreground">{fmt(hd.ts)}</span>
         </div>
       )}
     </>
