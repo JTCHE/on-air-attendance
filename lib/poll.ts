@@ -28,6 +28,7 @@ export async function pollAll(token: string, { concurrency = 8 } = {}) {
   const ts = Date.now();
   const queue = shuffle([...clubs]);
   const rows: { clubId: string; current: number; max: number | null }[] = [];
+  const tally = { ok: 0, noCounter: 0, failed: 0 }; // 200+data / 204 / other
   let unauthorized = false;
 
   async function worker() {
@@ -35,25 +36,32 @@ export async function pollAll(token: string, { concurrency = 8 } = {}) {
       const club = queue.shift()!;
       await sleep(Math.random() * 300);
       try {
-        console.log(`trying to poll ${club.name} (${club.id})...`);
         const res = await fetch(`https://mobile.clubconnect.fr/api/mobile/attendance/${club.id}`, { headers: HEADERS(token) });
         if (res.status === 401) {
           unauthorized = true;
           queue.length = 0;
           return;
         }
+        if (res.status === 204) {
+          tally.noCounter++;
+          continue;
+        } // no live counter right now
         if (res.status !== 200) {
-          console.error(`poll failed for ${club.name} (${club.id}): ${res.status}`);
+          tally.failed++;
+          console.warn(`  ✗ ${club.name} (${club.id}) → HTTP ${res.status}`);
           continue;
         }
-        const body = await res.text();
-        if (!body) continue;
-        const { current, max } = JSON.parse(body) as { current: number; max: number | null };
-        if (typeof current === "number") rows.push({ clubId: club.id, current, max: max ?? null });
-        console.log(`poll successful for ${club.name} (${club.id}): ${current}${max ? `/${max}` : ""}`);
+        const { current, max } = JSON.parse(await res.text()) as { current: number; max: number | null };
+        if (typeof current !== "number") {
+          tally.noCounter++;
+          continue;
+        }
+        rows.push({ clubId: club.id, current, max: max ?? null });
+        console.log(`  ✓ ${club.name} (${club.id}) → ${current}${max ? `/${max}` : ""}`);
+        tally.ok++;
       } catch (err) {
-        console.error(`poll failed for ${club.name} (${club.id}): ${err}`);
-        /* skip this club this round */
+        tally.failed++;
+        console.warn(`  ✗ ${club.name} (${club.id}) → ${err}`);
       }
     }
   }
@@ -61,5 +69,6 @@ export async function pollAll(token: string, { concurrency = 8 } = {}) {
   await Promise.all(Array.from({ length: concurrency }, worker));
   if (unauthorized) throw new Error("401 — refresh CLUBCONNECT_TOKEN");
   await insertReadings(ts, rows);
+  console.log(`poll: ${tally.ok} stored · ${tally.noCounter} no-counter · ${tally.failed} failed (of ${clubs.length})`);
   return rows.length;
 }
