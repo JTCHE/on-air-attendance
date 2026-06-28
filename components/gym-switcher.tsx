@@ -19,36 +19,55 @@ export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (i
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          role="combobox"
-          aria-expanded={open}
-          className="h-auto gap-2 rounded-lg px-3 py-1.5 text-base font-semibold tracking-tight"
+    <div>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            variant="secondary"
+            role="combobox"
+            aria-expanded={open}
+            className="h-auto gap-2 rounded-lg px-3 py-1.5 text-base font-semibold tracking-tight"
+          >
+            {current.name}
+            <ChevronsUpDown className="size-3.5 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="center"
+          className="w-80 p-0"
         >
-          {current.name}
-          <ChevronsUpDown className="size-3.5 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="center" className="w-80 p-0">
-        {/* Accent-insensitive: "defense" matches "La Défense". */}
-        <Command filter={(value, search) => (fold(value).includes(fold(search)) ? 1 : 0)}>
-          <CommandInput placeholder="Search gyms..." value={q} onValueChange={setQ} />
-          <CommandList>
-            <CommandEmpty>No gym found.</CommandEmpty>
-            <CommandGroup>
-              {clubs.map((c) => (
-                <CommandItem key={c.id} value={c.name} onSelect={() => pick(c.id)}>
-                  <Check className={cn("size-4 shrink-0", c.id === current.id ? "opacity-100" : "opacity-0")} />
-                  <Highlight text={c.name} query={q} />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          {/* Accent-insensitive: "defense" matches "La Défense". */}
+          <Command filter={(value, search) => (fold(value).includes(fold(search)) ? 1 : 0)}>
+            <CommandInput
+              placeholder="Search gyms..."
+              value={q}
+              onValueChange={setQ}
+            />
+            <CommandList>
+              <CommandEmpty>No gym found.</CommandEmpty>
+              <CommandGroup>
+                {clubs.map((c) => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.name}
+                    onSelect={() => pick(c.id)}
+                  >
+                    <Check className={cn("size-4 shrink-0", c.id === current.id ? "opacity-100" : "opacity-0")} />
+                    <Highlight
+                      text={c.name}
+                      query={q}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
