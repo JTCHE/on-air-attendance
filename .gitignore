@@ -4,6 +4,7 @@ dist/
 .env
 .env.local
 *.db
+.tsbuildinfo
 
 # Local Netlify folder
 .netlify
