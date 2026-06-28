@@ -18,8 +18,24 @@ async function connect(): Promise<Client> {
       max      INTEGER
     )
   `);
-  // Old table was attendance(ts PK, current, max). Add club_id if missing.
-  try { await db.execute(`ALTER TABLE attendance ADD COLUMN club_id TEXT NOT NULL DEFAULT '9eM6en7UzJ'`); } catch { /* already there */ }
+  const cols = (await db.execute("PRAGMA table_info(attendance)")).rows.map((r) => ({ name: String(r.name), pk: Number(r.pk) }));
+  // The original table had `ts` as PRIMARY KEY. Every poll cycle writes one
+  // shared ts across all clubs, so that PK silently dropped all but the first
+  // club each cycle. Rebuild without it (preserving rows) — the real fix for
+  // "only Celleneuve ever gets data".
+  if (cols.some((c) => c.name === "ts" && c.pk > 0)) {
+    await db.batch([
+      `CREATE TABLE attendance_new (
+         ts INTEGER NOT NULL, club_id TEXT NOT NULL DEFAULT '9eM6en7UzJ',
+         current INTEGER NOT NULL, max INTEGER )`,
+      `INSERT INTO attendance_new (ts, club_id, current, max)
+         SELECT ts, club_id, current, max FROM attendance`,
+      `DROP TABLE attendance`,
+      `ALTER TABLE attendance_new RENAME TO attendance`,
+    ], "write");
+  } else if (!cols.some((c) => c.name === "club_id")) {
+    try { await db.execute(`ALTER TABLE attendance ADD COLUMN club_id TEXT NOT NULL DEFAULT '9eM6en7UzJ'`); } catch { /* already there */ }
+  }
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_club_ts ON attendance(club_id, ts)`);
   return db;
 }
@@ -29,6 +45,7 @@ const db = () => (_conn ??= connect());
 
 export type Reading = { ts: number; current: number; max: number | null };
 export type Baseline = { weekday: number; hour: number; avg: number; samples: number };
+export type ClubData = Awaited<ReturnType<typeof getClubData>>;
 
 // Batch insert one reading per club in a single round-trip.
 export async function insertReadings(ts: number, rows: { clubId: string; current: number; max: number | null }[]) {
