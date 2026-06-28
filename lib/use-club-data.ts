@@ -9,12 +9,12 @@ import type { ClubData } from "@/lib/db";
 export function useClubData(clubId: string, hours: number, initial: ClubData) {
   const [data, setData] = useState(initial);
   const [loading, setLoading] = useState(false);
-  const seeded = useRef(`${clubId}:${hours}`); // key the SSR data already covers
+  const mounted = useRef(false); // first run already has the SSR data
 
   useEffect(() => {
     let alive = true;
-    const key = `${clubId}:${hours}`;
-    const fresh = key !== seeded.current; // user switched club/timeframe
+    const fresh = mounted.current; // any clubId/hours change after mount = refetch
+    mounted.current = true;
     if (fresh) setLoading(true);
 
     const load = async (silent: boolean) => {
