@@ -17,5 +17,5 @@ export default async function ClubPage({ params }: { params: Promise<{ clubId: s
   if (!club) notFound();
 
   const data = await getClubData(clubId);
-  return <Dashboard club={club} {...data} />;
+  return <Dashboard club={club} initial={data} />;
 }
