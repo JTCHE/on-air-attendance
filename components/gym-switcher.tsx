@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronsUpDown, LayoutGrid } from "lucide-react";
 import { clubs, type Club } from "@/lib/clubs";
 import { cn } from "@/lib/utils";
 import { fold, matchIndex } from "@/lib/text";
@@ -8,9 +8,35 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
-export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (id: string) => void }) {
+export function GymSwitcher({
+  current,
+  activeIds,
+  onSelect,
+  onShowAll,
+  showAll,
+  loading,
+}: {
+  current: Club;
+  activeIds: string[];
+  onSelect: (id: string) => void;
+  onShowAll: () => void;
+  showAll: boolean;
+  loading: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Only offer clubs that actually report data (plus whatever is current).
+  const active = new Set(activeIds);
+  const options = clubs.filter((c) => c.id === current.id || active.has(c.id));
+
+  // Open onto the currently-viewed club rather than the top of the list.
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-club="${current.id}"]`);
+    el?.scrollIntoView({ block: "center" });
+  }, [open, current.id]);
 
   function pick(id: string) {
     setOpen(false);
@@ -19,7 +45,7 @@ export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (i
   }
 
   return (
-    <div>
+    <div className="flex items-center gap-1.5">
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -29,6 +55,7 @@ export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (i
             variant="secondary"
             role="combobox"
             aria-expanded={open}
+            disabled={showAll}
             className="h-auto gap-2 rounded-lg px-3 py-1.5 text-base font-semibold tracking-tight"
           >
             {current.name}
@@ -46,13 +73,14 @@ export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (i
               value={q}
               onValueChange={setQ}
             />
-            <CommandList>
+            <CommandList ref={listRef}>
               <CommandEmpty>No gym found.</CommandEmpty>
               <CommandGroup>
-                {clubs.map((c) => (
+                {options.map((c) => (
                   <CommandItem
                     key={c.id}
                     value={c.name}
+                    data-club={c.id}
                     onSelect={() => pick(c.id)}
                   >
                     <Check className={cn("size-4 shrink-0", c.id === current.id ? "opacity-100" : "opacity-0")} />
@@ -67,6 +95,17 @@ export function GymSwitcher({ current, onSelect }: { current: Club; onSelect: (i
           </Command>
         </PopoverContent>
       </Popover>
+      <Button
+        variant="secondary"
+        size="icon"
+        aria-label={showAll ? "Close grid" : "View all clubs"}
+        title={showAll ? "Close grid" : "View all clubs"}
+        disabled={loading}
+        className={cn("size-9 rounded-lg transition-opacity", loading && "opacity-40")}
+        onClick={onShowAll}
+      >
+        <LayoutGrid className="size-4" />
+      </Button>
     </div>
   );
 }

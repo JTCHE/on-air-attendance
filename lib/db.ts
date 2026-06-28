@@ -45,7 +45,46 @@ const db = () => (_conn ??= connect());
 
 export type Reading = { ts: number; current: number; max: number | null };
 export type Baseline = { weekday: number; hour: number; avg: number; samples: number };
+export type Snapshot = { id: string; current: number; max: number | null; ts: number };
+export type SnapshotWithHistory = Snapshot & { history: { ts: number; current: number }[] };
 export type ClubData = Awaited<ReturnType<typeof getClubData>>;
+
+// Latest reading per club (48h window) + last 5h history for sparklines.
+// ~37 of 116 ON AIR clubs ever expose a live counter; the rest always 204.
+export async function getActiveClubs(historyHours = 5): Promise<SnapshotWithHistory[]> {
+  const snapSince = Date.now() - 48 * 3_600_000;
+  const histSince = Date.now() - historyHours * 3_600_000;
+  const client = await db();
+  const [snapR, histR] = await client.batch([
+    {
+      sql: `SELECT a.club_id, a.current, a.max, a.ts
+              FROM attendance a
+              JOIN (SELECT club_id, MAX(ts) ts FROM attendance WHERE ts > ? GROUP BY club_id) m
+                ON a.club_id = m.club_id AND a.ts = m.ts
+             ORDER BY a.current DESC`,
+      args: [snapSince],
+    },
+    {
+      sql: `SELECT club_id, current, ts FROM attendance WHERE ts > ? ORDER BY club_id, ts`,
+      args: [histSince],
+    },
+  ], "read");
+
+  const histMap = new Map<string, { ts: number; current: number }[]>();
+  for (const row of histR.rows) {
+    const id = String(row.club_id);
+    if (!histMap.has(id)) histMap.set(id, []);
+    histMap.get(id)!.push({ ts: Number(row.ts), current: Number(row.current) });
+  }
+
+  return snapR.rows.map((row) => ({
+    id: String(row.club_id),
+    current: Number(row.current),
+    max: row.max == null ? null : Number(row.max),
+    ts: Number(row.ts),
+    history: histMap.get(String(row.club_id)) ?? [],
+  }));
+}
 
 // Batch insert one reading per club in a single round-trip.
 export async function insertReadings(ts: number, rows: { clubId: string; current: number; max: number | null }[]) {

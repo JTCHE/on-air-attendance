@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const OPTIONS: [label: string, hours: number][] = [
+  ["5h", 5],
   ["24h", 24],
   ["48h", 48],
   ["7d", 168],
