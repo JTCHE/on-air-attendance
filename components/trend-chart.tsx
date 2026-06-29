@@ -6,18 +6,18 @@ import type { Reading } from "@/lib/db";
 // container resize (guarded), then pure math — fast and deterministic.
 export function TrendChart({ data, loading }: { data: Reading[]; loading?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [{ w, h }, setSize] = useState({ w: 0, h: 0 });
+  const [{ width, height }, setSize] = useState({ width: 0, height: 0 });
   const [hover, setHover] = useState<number | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => {
-      const { width, height } = e.contentRect;
-      setSize((s) => (Math.abs(s.w - width) < 1 && Math.abs(s.h - height) < 1 ? s : { w: width, h: height }));
+    const resizeObserver = new ResizeObserver(([e]) => {
+      const { width: newWidth, height: newHeight } = e.contentRect;
+      setSize((s) => (Math.abs(s.width - newWidth) < 1 && Math.abs(s.height - newHeight) < 1 ? s : { width: newWidth, height: newHeight }));
     });
-    ro.observe(el);
-    return () => ro.disconnect();
+    resizeObserver.observe(el);
+    return () => resizeObserver.disconnect();
   }, []);
 
   return (
@@ -27,11 +27,11 @@ export function TrendChart({ data, loading }: { data: Reading[]; loading?: boole
     >
       {data.length < 2 ? (
         <div className="grid h-full place-items-center text-sm text-muted-foreground">Not enough data yet</div>
-      ) : w > 0 && h > 0 ? (
+      ) : width > 0 && height > 0 ? (
         <Plot
           data={data}
-          w={w}
-          h={h}
+          width={width}
+          height={height}
           hover={hover}
           setHover={setHover}
         />
@@ -42,30 +42,30 @@ export function TrendChart({ data, loading }: { data: Reading[]; loading?: boole
 
 function Plot({
   data,
-  w,
-  h,
+  width,
+  height,
   hover,
   setHover,
 }: {
   data: Reading[];
-  w: number;
-  h: number;
+  width: number;
+  height: number;
   hover: number | null;
   setHover: (i: number | null) => void;
 }) {
-  const padL = 30,
-    padR = 6,
-    padT = 8,
-    padB = 20;
+  const paddingLeft = 30,
+    paddingRight = 6,
+    paddingTop = 8,
+    paddingBottom = 20;
   const x0 = data[0].ts,
     x1 = data[data.length - 1].ts;
   const yMax = Math.max(5, ...data.map((d) => d.current)) * 1.15;
-  const sx = (ts: number) => padL + ((ts - x0) / (x1 - x0 || 1)) * (w - padL - padR);
-  const sy = (v: number) => h - padB - (v / yMax) * (h - padT - padB);
+  const scaleX = (ts: number) => paddingLeft + ((ts - x0) / (x1 - x0 || 1)) * (width - paddingLeft - paddingRight);
+  const scaleY = (v: number) => height - paddingBottom - (v / yMax) * (height - paddingTop - paddingBottom);
 
-  const pts = data.map((d) => `${sx(d.ts).toFixed(1)},${sy(d.current).toFixed(1)}`);
-  const line = "M" + pts.join("L");
-  const area = `${line}L${sx(x1).toFixed(1)},${(h - padB).toFixed(1)}L${sx(x0).toFixed(1)},${(h - padB).toFixed(1)}Z`;
+  const svgPoints = data.map((d) => `${scaleX(d.ts).toFixed(1)},${scaleY(d.current).toFixed(1)}`);
+  const line = "M" + svgPoints.join("L");
+  const area = `${line}L${scaleX(x1).toFixed(1)},${(height - paddingBottom).toFixed(1)}L${scaleX(x0).toFixed(1)},${(height - paddingBottom).toFixed(1)}Z`;
 
   const yTicks = [0, Math.round(yMax / 2 / 5) * 5, Math.round((yMax / 5) * 0.8) * 5].filter(
     (v, i, a) => a.indexOf(v) === i && v > 0,
@@ -79,12 +79,12 @@ function Plot({
       ? new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
       : new Date(ts).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
-  const hd = hover != null ? data[hover] : null;
-  const hx = hd ? sx(hd.ts) : 0;
+  const hoveredReading = hover != null ? data[hover] : null;
+  const hoverX = hoveredReading ? scaleX(hoveredReading.ts) : 0;
 
   // Nearest point to a client X (binary search over ts). Shared by mouse + touch.
   function locate(clientX: number, rect: DOMRect) {
-    const t = x0 + ((clientX - rect.left - padL) / (w - padL - padR)) * (x1 - x0);
+    const t = x0 + ((clientX - rect.left - paddingLeft) / (width - paddingLeft - paddingRight)) * (x1 - x0);
     let lo = 0,
       hi = data.length - 1;
     while (lo < hi) {
@@ -100,8 +100,8 @@ function Plot({
   return (
     <>
       <svg
-        width={w}
-        height={h}
+        width={width}
+        height={height}
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
         onTouchStart={onTouch}
@@ -132,16 +132,16 @@ function Plot({
         {yTicks.map((v) => (
           <g key={v}>
             <line
-              x1={padL}
-              x2={w - padR}
-              y1={sy(v)}
-              y2={sy(v)}
+              x1={paddingLeft}
+              x2={width - paddingRight}
+              y1={scaleY(v)}
+              y2={scaleY(v)}
               stroke="var(--border)"
               strokeWidth={1}
             />
             <text
-              x={padL - 6}
-              y={sy(v) + 3}
+              x={paddingLeft - 6}
+              y={scaleY(v) + 3}
               textAnchor="end"
               className="fill-muted-foreground text-[10px] tabular-nums"
             >
@@ -152,8 +152,8 @@ function Plot({
         {xTicks.map((ts, i) => (
           <text
             key={i}
-            x={sx(ts)}
-            y={h - 6}
+            x={scaleX(ts)}
+            y={height - 6}
             textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"}
             className="fill-muted-foreground text-[10px]"
           >
@@ -172,19 +172,19 @@ function Plot({
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        {hd && (
+        {hoveredReading && (
           <g>
             <line
-              x1={hx}
-              x2={hx}
-              y1={padT}
-              y2={h - padB}
+              x1={hoverX}
+              x2={hoverX}
+              y1={paddingTop}
+              y2={height - paddingBottom}
               stroke="var(--border)"
               strokeWidth={1}
             />
             <circle
-              cx={hx}
-              cy={sy(hd.current)}
+              cx={hoverX}
+              cy={scaleY(hoveredReading.current)}
               r={3.5}
               fill="var(--chart-line)"
               stroke="var(--background)"
@@ -193,13 +193,13 @@ function Plot({
           </g>
         )}
       </svg>
-      {hd && (
+      {hoveredReading && (
         <div
           className="pointer-events-none absolute -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs shadow-md"
-          style={{ left: Math.min(Math.max(hx, 48), w - 48), top: 2 }}
+          style={{ left: Math.min(Math.max(hoverX, 48), width - 48), top: 2 }}
         >
-          <span className="font-semibold tabular-nums">{hd.current}</span>
-          <span className="ml-1 text-muted-foreground">{fmt(hd.ts)}</span>
+          <span className="font-semibold tabular-nums">{hoveredReading.current}</span>
+          <span className="ml-1 text-muted-foreground">{fmt(hoveredReading.ts)}</span>
         </div>
       )}
     </>

@@ -29,13 +29,13 @@ export function useClubData(clubId: string, hours: number, initial: ClubData) {
     };
 
     if (fresh) load(false);
-    const iv = setInterval(() => load(true), 90_000);
+    const intervalId = setInterval(() => load(true), 90_000);
     const onVis = () => document.visibilityState === "visible" && load(true);
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
     return () => {
       alive = false;
-      clearInterval(iv);
+      clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onVis);
     };
