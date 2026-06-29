@@ -27,6 +27,9 @@
   --chart-line: oklch(0.7 0.14 250);
   --busy: oklch(0.637 0.208 25.3);
   --quiet: oklch(0.72 0.17 150);
+  --zone-quiet: oklch(0.72 0.17 150 / 0.18);
+  --zone-moderate: oklch(0.8 0.15 80 / 0.18);
+  --zone-busy: oklch(0.637 0.208 25.3 / 0.18);
 }
 
 @theme inline {
@@ -60,12 +63,18 @@
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
-  html, body { height: 100%; }
-  body { @apply bg-background text-foreground antialiased; }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
 }
 
-/* Single source of truth for the repeated dashboard surfaces. */
 @layer components {
   /* Hairline card. Tailwind's `border` is 1px; we want a crisper 0.25px stroke. */
   .panel {
