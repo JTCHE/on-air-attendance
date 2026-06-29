@@ -16,8 +16,8 @@ export function Heatmap({ club, baseline, now }: { club: Club; baseline: Baselin
   const map = new Map(baseline.map((b) => [b.weekday * 24 + b.hour, b.avg]));
   const maxAvg = baseline.reduce((m, b) => Math.max(m, b.avg), 0);
   const seen = baseline.map((b) => b.hour);
-  const lo = club.h ? club.h[0] : Math.min(...seen);
-  const hi = Math.min(23, club.h ? club.h[1] : Math.max(...seen));
+  const lo = club.openingHours ? club.openingHours[0] : Math.min(...seen);
+  const hi = Math.min(23, club.openingHours ? club.openingHours[1] : Math.max(...seen));
   const hours = Array.from({ length: Math.max(1, hi - lo + 1) }, (_, i) => lo + i);
 
   return (

@@ -47,7 +47,9 @@ function GymCard({ snap, onSelect }: { snap: SnapshotWithHistory; onSelect: (id:
       <div className="truncate text-xs font-medium text-muted-foreground">{name}</div>
       <div className="flex items-baseline gap-1.5">
         <span className="text-3xl font-bold leading-none tabular-nums tracking-tighter">{snap.current}</span>
-        {pct != null && <span className={cn("text-xs tabular-nums", pct >= 80 ? "text-busy" : "text-muted-foreground")}>{pct}%</span>}
+        {pct != null && (
+          <span className={cn("text-xs tabular-nums", pct >= 80 ? "text-busy" : "text-muted-foreground")}>{pct}%</span>
+        )}
       </div>
       <Sparkline data={snap.history} />
       {snap.max != null && (
@@ -64,16 +66,31 @@ function GymCard({ snap, onSelect }: { snap: SnapshotWithHistory; onSelect: (id:
 
 function Sparkline({ data }: { data: { ts: number; current: number }[] }) {
   if (data.length < 2) return <div className="h-6" />;
-  const W = 100, H = 24;
-  const x0 = data[0].ts, x1 = data[data.length - 1].ts;
+  const W = 100,
+    H = 24;
+  const x0 = data[0].ts,
+    x1 = data[data.length - 1].ts;
   const vals = data.map((d) => d.current);
-  const y0 = Math.min(...vals), y1 = Math.max(...vals);
-  const px = (t: number) => x1 === x0 ? W / 2 : ((t - x0) / (x1 - x0)) * W;
-  const py = (v: number) => y1 === y0 ? H / 2 : H - ((v - y0) / (y1 - y0)) * H;
+  const y0 = Math.min(...vals),
+    y1 = Math.max(...vals);
+  const px = (t: number) => (x1 === x0 ? W / 2 : ((t - x0) / (x1 - x0)) * W);
+  const py = (v: number) => (y1 === y0 ? H / 2 : H - ((v - y0) / (y1 - y0)) * H);
   const pts = data.map((d) => `${px(d.ts)},${py(d.current)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }} preserveAspectRatio="none">
-      <polyline points={pts} fill="none" stroke="var(--color-chart-line)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ height: H }}
+      preserveAspectRatio="none"
+    >
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="var(--color-chart-line)"
+        strokeWidth=".75"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

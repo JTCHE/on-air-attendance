@@ -2,30 +2,49 @@
 import { useCallback, useEffect, useState } from "react";
 import { getClub, type Club } from "@/lib/clubs";
 import type { ClubData, SnapshotWithHistory } from "@/lib/db";
-import { useClubData } from "@/lib/use-club-data";
+import { useClubData, type DateRange } from "@/lib/use-club-data";
 import { GymSwitcher } from "@/components/gym-switcher";
 import { Hero } from "@/components/hero";
 import { TrendChart } from "@/components/trend-chart";
-import { Timeframe } from "@/components/timeframe";
+import { DayPicker } from "@/components/day-picker";
 import { AllView } from "@/components/all-view";
 
-export function Dashboard({ club: initialClub, initial, active }: { club: Club; initial: ClubData; active: SnapshotWithHistory[] }) {
+export function Dashboard({
+  club: initialClub,
+  initial,
+  initialDateRange,
+  active,
+}: {
+  club: Club;
+  initial: ClubData;
+  initialDateRange: DateRange;
+  active: SnapshotWithHistory[];
+}) {
   const [clubId, setClubId] = useState(initialClub.id);
-  const [hours, setHours] = useState(48);
+  const [dateRange, setDateRange] = useState<DateRange>(initialDateRange);
   const [showAll, setShowAll] = useState(false);
-  const { data, loading } = useClubData(clubId, hours, initial);
   const club = getClub(clubId) ?? initialClub;
+  const { data, loading } = useClubData(clubId, dateRange, club.timeZone, initial);
+
+  const gymLocalTime = new Date(
+    new Date().toLocaleString("en-US", { timeZone: club.timeZone ?? "Europe/Paris" }),
+  );
 
   // Optimistic switch: header label + title flip instantly, data catches up via
   // the route-handler fetch. No RSC navigation, so it never blocks on the DB.
   // pushState (not replace) so the browser back button returns to the prior gym.
-  const apply = useCallback((id: string) => {
-    setShowAll(false);
-    setClubId(id);
-    document.cookie = `club=${id}; path=/; max-age=31536000; samesite=lax`;
-    const c = getClub(id);
-    if (c) document.title = `${c.name} | Occupation`;
-  }, []);
+  const apply = useCallback(
+    (id: string) => {
+      setShowAll(false);
+      setClubId(id);
+      // Reset to today's range for the new club
+      setDateRange(initialDateRange);
+      document.cookie = `club=${id}; path=/; max-age=31536000; samesite=lax`;
+      const c = getClub(id);
+      if (c) document.title = `${c.name} | Occupation`;
+    },
+    [initialDateRange],
+  );
 
   const switchClub = useCallback(
     (id: string) => {
@@ -66,20 +85,29 @@ export function Dashboard({ club: initialClub, initial, active }: { club: Club; 
           <Hero
             latest={data.latest}
             baseline={data.baseline}
+            gymLocalTime={gymLocalTime}
+            openingHours={club.openingHours}
             loading={loading}
           />
 
           <section className="flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between px-1 pb-2">
-              <h2 className="label">Attendance</h2>
-              <Timeframe
-                hours={hours}
-                onChange={setHours}
+              {/* <h2 className="label">Attendance</h2> */}
+              <DayPicker
+                timeZone={club.timeZone}
+                openingHours={club.openingHours}
+                dateRange={dateRange}
+                onChange={setDateRange}
               />
             </div>
             <div className="min-h-0 flex-1">
               <TrendChart
                 data={data.recent}
+                timeZone={club.timeZone}
+                xDomain={[dateRange.startTimestamp, dateRange.fullDayEndTimestamp ?? dateRange.endTimestamp]}
+                baseline={data.baseline}
+                gymLocalWeekday={gymLocalTime.getDay()}
+                currentTimestamp={Date.now()}
                 loading={loading}
               />
             </div>
