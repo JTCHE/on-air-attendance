@@ -99,20 +99,27 @@ export async function insertReadings(ts: number, rows: { clubId: string; current
 }
 
 // Everything one club's dashboard needs, in a single batched read.
-export async function getClubData(clubId: string, hours = 48) {
-  const since = Date.now() - hours * 3_600_000;
+export async function getClubData(
+  clubId: string,
+  startTimestamp: number = Date.now() - 48 * 3_600_000,
+  endTimestamp: number = Date.now(),
+  utcOffset = "+00:00",
+) {
   const [latest, recent, baseline, total] = await (await db()).batch([
     { sql: "SELECT ts, current, max FROM attendance WHERE club_id = ? ORDER BY ts DESC LIMIT 1", args: [clubId] },
-    { sql: "SELECT ts, current, max FROM attendance WHERE club_id = ? AND ts > ? ORDER BY ts", args: [clubId, since] },
+    {
+      sql: "SELECT ts, current, max FROM attendance WHERE club_id = ? AND ts BETWEEN ? AND ? ORDER BY ts",
+      args: [clubId, startTimestamp, endTimestamp],
+    },
     {
       sql: `SELECT
-              CAST(strftime('%w', ts/1000, 'unixepoch', 'localtime') AS INTEGER) AS weekday,
-              CAST(strftime('%H', ts/1000, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+              CAST(strftime('%w', ts/1000, 'unixepoch', ?) AS INTEGER) AS weekday,
+              CAST(strftime('%H', ts/1000, 'unixepoch', ?) AS INTEGER) AS hour,
               ROUND(AVG(current)) AS avg,
               COUNT(*) AS samples
             FROM attendance WHERE club_id = ?
             GROUP BY weekday, hour`,
-      args: [clubId],
+      args: [utcOffset, utcOffset, clubId],
     },
     { sql: "SELECT COUNT(*) AS n FROM attendance WHERE club_id = ?", args: [clubId] },
   ], "read");
