@@ -11,4 +11,5 @@ dist/
 # Local Netlify folder
 .netlify
 
-.logs/*
+logs/*
+
