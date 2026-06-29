@@ -42,7 +42,7 @@ function GymCard({ snap, onSelect }: { snap: SnapshotWithHistory; onSelect: (id:
   return (
     <button
       onClick={() => onSelect(snap.id)}
-      className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-foreground/25"
+      className="flex cursor-pointer flex-col gap-2 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-foreground/25"
     >
       <div className="truncate text-xs font-medium text-muted-foreground">{name}</div>
       <div className="flex items-baseline gap-1.5">

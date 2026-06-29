@@ -25,8 +25,8 @@ export function Hero({
   const delta = latest && usual ? latest.current - usual.avg : null;
   const pct = delta != null && usual && usual.avg > 0 ? Math.round((delta / usual.avg) * 100) : null;
 
-  // Only surface the ±% line if the difference is meaningful (≥ 10 %)
-  const showPct = pct != null && Math.abs(pct) >= 10;
+  // Only surface the ±% line if the difference is meaningful (≥ 20 %)
+  const showPct = pct != null && Math.abs(pct) >= 20;
   const tone = showPct ? (delta! >= 0 ? "text-busy" : "text-quiet") : "";
   const context =
     typical == null

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { getClub, type Club } from "@/lib/clubs";
+import { getClub, gymDayRange, type Club } from "@/lib/clubs";
 import type { ClubData, SnapshotWithHistory } from "@/lib/db";
 import { useClubData, type DateRange } from "@/lib/use-club-data";
 import { GymSwitcher } from "@/components/gym-switcher";
@@ -37,18 +37,21 @@ export function Dashboard({
     (id: string) => {
       setShowAll(false);
       setClubId(id);
-      // Reset to today's range for the new club
-      setDateRange(initialDateRange);
+      const c = getClub(id) ?? initialClub;
+      // Compute today's range for the new club's timezone/hours, not the original club's.
+      setDateRange(gymDayRange(Date.now(), c.timeZone ?? "Europe/Paris", c.openingHours));
       document.cookie = `club=${id}; path=/; max-age=31536000; samesite=lax`;
-      const c = getClub(id);
-      if (c) document.title = `${c.name} | Occupation`;
+      document.title = `${c.name} | Occupation`;
     },
-    [initialDateRange],
+    [initialClub],
   );
 
   const switchClub = useCallback(
     (id: string) => {
-      if (id === clubId) return;
+      if (id === clubId) {
+        setShowAll(false);
+        return;
+      }
       window.history.pushState(null, "", `/${id}`);
       apply(id);
     },
