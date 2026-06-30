@@ -137,7 +137,9 @@ function Plot({
   if (isSingleDay && baseline && gymLocalWeekday != null && currentTimestamp != null && currentTimestamp < x1) {
     const todayBaseline = baseline.filter((s) => s.weekday === gymLocalWeekday);
     const peakDailyAverage = Math.max(1, ...todayBaseline.map((s) => s.avg));
-    const firstFutureHour = Math.ceil(currentTimestamp / 3_600_000);
+    // Start at the currently active hour (floor, not ceil) so an in-progress
+    // period's zone extends back to when it started, not just its future tail.
+    const firstFutureHour = Math.floor(currentTimestamp / 3_600_000);
     const lastHour = Math.floor(x1 / 3_600_000);
     for (let hour = firstFutureHour; hour <= lastHour; hour++) {
       const slot = todayBaseline.find((s) => s.hour === hour % 24);
