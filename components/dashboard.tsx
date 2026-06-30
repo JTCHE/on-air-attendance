@@ -107,7 +107,14 @@ export function Dashboard({
               <TrendChart
                 data={data.recent}
                 timeZone={club.timeZone}
-                xDomain={[dateRange.startTimestamp, dateRange.fullDayEndTimestamp ?? dateRange.endTimestamp]}
+                xDomain={[
+                  // If readings exist before the configured opening hour (dateRange.startTimestamp
+                  // falls back to midnight for that case — see gymDayRange), the opening hours are
+                  // likely wrong for this club. Start the graph at the first real poll instead of
+                  // dragging it back to midnight.
+                  data.recent.length ? Math.max(dateRange.startTimestamp, data.recent[0].ts) : dateRange.startTimestamp,
+                  dateRange.fullDayEndTimestamp ?? dateRange.endTimestamp,
+                ]}
                 baseline={data.baseline}
                 gymLocalWeekday={gymLocalTime.getDay()}
                 currentTimestamp={Date.now()}

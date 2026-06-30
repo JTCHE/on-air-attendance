@@ -25,9 +25,13 @@ export function gymDayRange(
   const utcMidnight = Date.UTC(year, month, day) - gymOffset;
   const openMs = (openingHours?.[0] ?? 6) * 3_600_000;
   const closeMs = (openingHours?.[1] ?? 23) * 3_600_000;
+  const endTimestamp = Math.min(utcMidnight + closeMs, referenceMs < Date.now() ? Date.now() : referenceMs);
+  // Before today's opening hour, start > openMs would invert the range and hide
+  // any early readings — fall back to midnight so the window still covers "now".
+  const startTimestamp = endTimestamp < utcMidnight + openMs ? utcMidnight : utcMidnight + openMs;
   return {
-    startTimestamp: utcMidnight + openMs,
-    endTimestamp: Math.min(utcMidnight + closeMs, referenceMs < Date.now() ? Date.now() : referenceMs),
+    startTimestamp,
+    endTimestamp,
     fullDayEndTimestamp: utcMidnight + closeMs,
   };
 }
