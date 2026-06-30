@@ -40,11 +40,20 @@ export function recommend(
   const peakToday = Math.max(...todaySlots.map((s) => s.avg));
   if (peakToday === 0) return { label: "", tone: "neutral" };
 
-  const currentSlot = todaySlots.find((s) => s.hour === gymLocalHour);
-  const currentScore = currentSlot ? currentSlot.avg / peakToday : 0.5;
+  const scoreAt = (hour: number) => {
+    const slot = todaySlots.find((s) => s.hour === hour);
+    return slot ? slot.avg / peakToday : null;
+  };
 
-  if (currentScore < 0.45) {
+  const currentScore = scoreAt(gymLocalHour);
+  if (currentScore != null && currentScore < 0.45) {
     return { label: "Go now", tone: "quiet" };
+  }
+
+  // An imminent calm window beats jumping straight to "busy all day".
+  const nextScore = scoreAt(gymLocalHour + 1);
+  if (nextScore != null && nextScore < 0.45) {
+    return { label: "Go in about an hour", tone: "quiet" };
   }
 
   // Find next quiet window today
@@ -60,17 +69,15 @@ export function recommend(
     return { label, tone: "busy" };
   }
 
-  // Nothing quiet today — scan forward through days that have baseline data
-  const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  for (let daysAhead = 1; daysAhead <= 7; daysAhead++) {
-    const weekday = (gymLocalWeekday + daysAhead) % 7;
-    const daySlots = baseline.filter((s) => s.weekday === weekday && inHours(s));
-    if (!daySlots.length) continue;
-    const peakDay = Math.max(1, ...daySlots.map((s) => s.avg));
-    const quietSlot = firstQuietSlot(daySlots, peakDay);
-    if (!quietSlot) continue;
-    const when = daysAhead === 1 ? "tomorrow" : WEEKDAY_NAMES[weekday];
-    return { label: `Go ${when} at ${formatHour(quietSlot.hour)}`, tone: "busy" };
+  // Nothing quiet left today — check tomorrow only, never further out.
+  const tomorrowWeekday = (gymLocalWeekday + 1) % 7;
+  const tomorrowSlots = baseline.filter((s) => s.weekday === tomorrowWeekday && inHours(s));
+  if (tomorrowSlots.length) {
+    const peakTomorrow = Math.max(1, ...tomorrowSlots.map((s) => s.avg));
+    const quietTomorrow = firstQuietSlot(tomorrowSlots, peakTomorrow);
+    if (quietTomorrow) {
+      return { label: `Go tomorrow at ${formatHour(quietTomorrow.hour)}`, tone: "busy" };
+    }
   }
 
   return { label: "", tone: "neutral" };
